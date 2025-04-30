@@ -106,7 +106,21 @@ public static class SMTP
         if (options.AcceptAllCerts)
         {
 #pragma warning disable S4830 // Server certificates should be verified during SSL/TLS connections
-            client.ServerCertificateValidationCallback = (s, x509certificate, x590chain, sslPolicyErrors) => true;
+            client.ServerCertificateValidationCallback = (s, x509certificate, x590chain, sslPolicyErrors) =>
+            {
+                if (!string.IsNullOrEmpty(options.ServerCertificationThumbprint))
+                {
+                    if (x509certificate is X509Certificate2 cert && options.ServerCertificationThumbprint == cert.Thumbprint)
+                        return true;
+                    else
+                        return false;
+                }
+                else
+                {
+                    return true;
+                }
+
+            };
 #pragma warning restore S4830 // Server certificates should be verified during SSL/TLS connections
         }
         else
