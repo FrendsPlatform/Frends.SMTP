@@ -110,7 +110,10 @@ public static class SMTP
             {
                 if (!string.IsNullOrEmpty(options.ServerCertificationThumbprint))
                 {
-                    if (x509certificate is X509Certificate2 cert && options.ServerCertificationThumbprint == cert.Thumbprint)
+                    if (x509certificate is X509Certificate2 cert && string.Equals(
+                        options.ServerCertificationThumbprint?.Replace(" ", "").ToUpperInvariant(),
+                        cert.Thumbprint?.Replace(" ", "").ToUpperInvariant(),
+                        StringComparison.Ordinal))
                         return true;
                     else
                         return false;
@@ -129,7 +132,10 @@ public static class SMTP
             {
                 if (!string.IsNullOrEmpty(options.ServerCertificationThumbprint))
                 {
-                    if (x509certificate is X509Certificate2 cert && options.ServerCertificationThumbprint == cert.Thumbprint)
+                    if (x509certificate is X509Certificate2 cert && string.Equals(
+                        options.ServerCertificationThumbprint?.Replace(" ", "").ToUpperInvariant(),
+                        cert.Thumbprint?.Replace(" ", "").ToUpperInvariant(),
+                        StringComparison.Ordinal))
                         return true;
                     else
                         return false;
