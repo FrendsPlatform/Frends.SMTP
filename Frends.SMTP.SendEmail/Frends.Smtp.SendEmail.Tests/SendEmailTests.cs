@@ -8,6 +8,8 @@ using MailKit.Net.Smtp;
 using MailKit.Security;
 using System.Net.Security;
 using System.Threading;
+using System.Security.Cryptography.X509Certificates;
+using System.Security.Cryptography;
 
 namespace Frends.SMTP.SendEmail.Tests;
 
@@ -256,5 +258,80 @@ public class SendEmailTests
             Assert.IsFalse(callback.Invoke(null, null, null, SslPolicyErrors.RemoteCertificateNameMismatch), "Should reject mismatched certificates");
             Assert.IsFalse(callback.Invoke(null, null, null, SslPolicyErrors.RemoteCertificateChainErrors), "Should reject invalid certificate chains");
         });
+    }
+
+    [Test]
+    public async Task TestCertificateThumbprintValidation()
+    {
+        using var rsa = RSA.Create(2048);
+        var request = new CertificateRequest("CN=UnitTestCert", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        var validCert = request.CreateSelfSigned(DateTimeOffset.Now, DateTimeOffset.Now.AddYears(1));
+        var validThumbprint = validCert.Thumbprint?.Replace(" ", "").ToUpperInvariant();
+        var invalidThumbprint = "DEADBEEF1234567890ABCDEF1234567890ABCDEF";
+
+
+        var mockSmtpClient = new Mock<SmtpClient> { CallBase = true };
+
+        mockSmtpClient.Setup(c => c.ConnectAsync(
+            It.IsAny<string>(),
+            It.IsAny<int>(),
+            It.IsAny<SecureSocketOptions>(),
+            It.IsAny<CancellationToken>()
+        )).Returns(Task.CompletedTask);
+
+        mockSmtpClient.Setup(c => c.AuthenticateAsync(
+            It.IsAny<SaslMechanism>(),
+            It.IsAny<CancellationToken>()
+        )).Returns(Task.CompletedTask);
+
+        var options = new Options
+        {
+            SMTPServer = "smtp.example.com",
+            Port = 587,
+            SecureSocket = SecureSocketOption.StartTls,
+            UseOAuth2 = false,
+        };
+
+        options.AcceptAllCerts = true;
+        options.ServerCertificationThumbprint = validThumbprint;
+
+        await SMTP.InitializeSmtpClient(options, default, mockSmtpClient.Object);
+        var callback = mockSmtpClient.Object.ServerCertificateValidationCallback;
+
+        Assert.IsTrue(
+            callback.Invoke(null, validCert, null, SslPolicyErrors.RemoteCertificateChainErrors),
+            "AcceptAllCerts=true: Valid thumbprint should be accepted."
+        );
+
+        options.ServerCertificationThumbprint = invalidThumbprint;
+
+        await SMTP.InitializeSmtpClient(options, default, mockSmtpClient.Object);
+        callback = mockSmtpClient.Object.ServerCertificateValidationCallback;
+
+        Assert.IsFalse(
+            callback.Invoke(null, validCert, null, SslPolicyErrors.RemoteCertificateChainErrors),
+            "AcceptAllCerts=true: Invalid thumbprint should be rejected."
+        );
+
+        options.AcceptAllCerts = false;
+        options.ServerCertificationThumbprint = validThumbprint;
+
+        await SMTP.InitializeSmtpClient(options, default, mockSmtpClient.Object);
+        callback = mockSmtpClient.Object.ServerCertificateValidationCallback;
+
+        Assert.IsTrue(
+            callback.Invoke(null, validCert, null, SslPolicyErrors.RemoteCertificateChainErrors),
+            "AcceptAllCerts=false: Valid thumbprint should be accepted even with SSL errors."
+        );
+
+        options.ServerCertificationThumbprint = invalidThumbprint;
+
+        await SMTP.InitializeSmtpClient(options, default, mockSmtpClient.Object);
+        callback = mockSmtpClient.Object.ServerCertificateValidationCallback;
+
+        Assert.IsFalse(
+            callback.Invoke(null, validCert, null, SslPolicyErrors.RemoteCertificateChainErrors),
+            "AcceptAllCerts=false: Invalid thumbprint should be rejected."
+        );
     }
 }

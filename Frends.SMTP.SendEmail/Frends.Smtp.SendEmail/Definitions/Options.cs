@@ -35,7 +35,7 @@ public class Options
     /// This should only be used in development/test environments with self-signed certificates.
     /// Using this option in production environments poses significant security risks.
     /// </summary>
-    /// <example>true</example>
+    /// <example>false</example>
     [DefaultValue(false)]
     public bool AcceptAllCerts { get; set; }
 
