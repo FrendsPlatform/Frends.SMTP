@@ -6,12 +6,14 @@ using System.Linq;
 using System.Net;
 using MailKit.Net.Smtp;
 using MailKit.Security;
+using System.Security.Cryptography.X509Certificates;
 using MimeKit;
 using MimeKit.Text;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Frends.SMTP.SendEmail.Definitions;
+using System.Net.Security;
 
 namespace Frends.SMTP.SendEmail;
 /// <summary>
@@ -96,11 +98,54 @@ public static class SMTP
     /// <summary>
     /// Initializes new SmtpClient with given parameters.
     /// </summary>
-    private static async Task<SmtpClient> InitializeSmtpClient(Options settings, CancellationToken cancellationToken)
+    internal static async Task<SmtpClient> InitializeSmtpClient(Options options, CancellationToken cancellationToken, SmtpClient client = null)
     {
-        var client = new SmtpClient();
+        client ??= new SmtpClient();
 
-        var secureSocketOption = settings.SecureSocket switch
+        // Accept all certs?
+        if (options.AcceptAllCerts)
+        {
+#pragma warning disable S4830 // Server certificates should be verified during SSL/TLS connections
+            client.ServerCertificateValidationCallback = (s, x509certificate, x590chain, sslPolicyErrors) =>
+            {
+                if (!string.IsNullOrEmpty(options.ServerCertificationThumbprint))
+                {
+                    if (x509certificate is X509Certificate2 cert && string.Equals(
+                        options.ServerCertificationThumbprint?.Replace(" ", "").ToUpperInvariant(),
+                        cert.Thumbprint?.Replace(" ", "").ToUpperInvariant(),
+                        StringComparison.Ordinal))
+                        return true;
+                    else
+                        return false;
+                }
+                else
+                {
+                    return true;
+                }
+
+            };
+#pragma warning restore S4830 // Server certificates should be verified during SSL/TLS connections
+        }
+        else
+        {
+            client.ServerCertificateValidationCallback = (s, x509certificate, x590chain, sslPolicyErrors) =>
+            {
+                if (!string.IsNullOrEmpty(options.ServerCertificationThumbprint))
+                {
+                    if (x509certificate is X509Certificate2 cert && string.Equals(
+                        options.ServerCertificationThumbprint?.Replace(" ", "").ToUpperInvariant(),
+                        cert.Thumbprint?.Replace(" ", "").ToUpperInvariant(),
+                        StringComparison.Ordinal))
+                        return true;
+                    else
+                        return false;
+                }
+
+                return sslPolicyErrors == SslPolicyErrors.None;
+            };
+        }
+
+        var secureSocketOption = options.SecureSocket switch
         {
             SecureSocketOption.None => SecureSocketOptions.None,
             SecureSocketOption.SslOnConnect => SecureSocketOptions.SslOnConnect,
@@ -109,16 +154,16 @@ public static class SMTP
             _ => SecureSocketOptions.Auto,
         };
 
-        await client.ConnectAsync(settings.SMTPServer, settings.Port, secureSocketOption, cancellationToken);
+        await client.ConnectAsync(options.SMTPServer, options.Port, secureSocketOption, cancellationToken);
 
         SaslMechanism mechanism;
 
-        if (settings.UseOAuth2)
-            mechanism = new SaslMechanismOAuth2(settings.UserName, settings.Token);
-        else if (string.IsNullOrEmpty(settings.Password))
+        if (options.UseOAuth2)
+            mechanism = new SaslMechanismOAuth2(options.UserName, options.Token);
+        else if (string.IsNullOrEmpty(options.Password))
             return client;
         else
-            mechanism = new SaslMechanismLogin(new NetworkCredential(settings.UserName, settings.Password));
+            mechanism = new SaslMechanismLogin(new NetworkCredential(options.UserName, options.Password));
 
         await client.AuthenticateAsync(mechanism, cancellationToken);
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.0.0] - 2024-09-30
+### Added
+- [Breaking] Added parameter AcceptAllCerts which allows bypassing SSL/TLS certificate validation for SMTP servers.
+	- Default value: false
+    - Warning: Enabling this option poses security risks. Only use when connecting to trusted SMTP servers with self-signed certificates.
+    - Usage: Enable only in controlled environments where certificate validation issues cannot be resolved through proper certificate installation.
+- [Breaking] Added parameter ServerCertificationThumbprint which enables check for the certification thumbprint.
+    - Default value: ""
+
 ## [1.2.1] - 2024-01-02
 ### Fixed
 - Fixed issue with connecting to SMTP servers which do not support authentication.
