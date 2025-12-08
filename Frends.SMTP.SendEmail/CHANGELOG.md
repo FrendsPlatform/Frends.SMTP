@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.1.0] - 2025-12-08
+### Fixed
+- Fix missing metadata about repository url and changelog.
+
 ## [2.0.0] - 2024-09-30
 ### Added
 - [Breaking] Added parameter AcceptAllCerts which allows bypassing SSL/TLS certificate validation for SMTP servers.
