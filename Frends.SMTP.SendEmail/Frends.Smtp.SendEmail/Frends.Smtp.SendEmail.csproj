@@ -9,7 +9,6 @@
         <Product>Frends</Product>
         <Copyright>Frends</Copyright>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        <PackageProjectUrl>https://github.com/FrendsPlatform/Frends.SMTP</PackageProjectUrl>
         <IncludeSource>true</IncludeSource>
         <PackageTags>Frends</PackageTags>
         <Description>Task for sending emails using SMTP protocol.</Description>
