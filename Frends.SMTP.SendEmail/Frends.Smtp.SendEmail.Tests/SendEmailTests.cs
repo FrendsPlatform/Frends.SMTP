@@ -22,7 +22,7 @@ public class SendEmailTests
     private const string TESTFILENOTEXISTING = "doesntexist.txt";
 
     private static readonly string USERNAME = Environment.GetEnvironmentVariable("Frends_SMTP_Username");
-    private static readonly string PASSWORD = Environment.GetEnvironmentVariable("Frends_SMTP_Password");
+    private static readonly string PASSWORD = Environment.GetEnvironmentVariable("FRENDS_SMTP_PASSWORD");
     private static readonly string SMTPADDRESS = Environment.GetEnvironmentVariable("Frends_SMTP_Address");
     private static readonly string TOEMAILADDRESS = Environment.GetEnvironmentVariable("Frends_SMTP_Email");
     private static readonly string FROMEMAILADDRESS = Environment.GetEnvironmentVariable("Frends_SMTP_Email");
