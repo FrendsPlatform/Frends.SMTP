@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 namespace Frends.SMTP.SendEmail.Definitions;
@@ -72,12 +72,16 @@ public class Input
     public bool IsMessageHtml { get; set; }
 
     /// <summary>
-    /// Encoding of message body and subject. Use following table's name column for other options. https://msdn.microsoft.com/en-us/library/system.text.encoding(v=vs.110).aspx#Anchor_5 
+    /// Encoding of message body and subject. Use following table's name column for other options. https://msdn.microsoft.com/en-us/library/system.text.encoding(v=vs.110).aspx#Anchor_5
     /// </summary>
     /// <example>utf-8</example>
     [DisplayFormat(DataFormatString = "Text")]
     [DefaultValue("utf-8")]
     public string MessageEncoding { get; set; }
 
+    /// <summary>
+    /// Files and string content to attach to the email.
+    /// </summary>
+    /// <example>[ { AttachmentType = AttachmentType.FileAttachment, FilePath = "C:\files\invoice.pdf" } ]</example>
+    public Attachment[] Attachments { get; set; }
 }
-

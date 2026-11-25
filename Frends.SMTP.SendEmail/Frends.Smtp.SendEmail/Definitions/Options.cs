@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 namespace Frends.SMTP.SendEmail.Definitions;
@@ -75,7 +75,7 @@ public class Options
     /// <summary>
     /// The SHA-1 thumbprint of the server's SSL certificate.
     /// This provides a secure way to validate the server's identity without accepting all certificates.
-    /// 
+    ///
     /// How to obtain the thumbprint:
     /// 1. View the server's certificate in a browser
     /// 2. Open certificate details
@@ -88,4 +88,19 @@ public class Options
     [DefaultValue("")]
     [UIHint(nameof(AcceptAllCerts), "", false)]
     public string ServerCertificationThumbprint { get; set; }
+
+    /// <summary>
+    /// Whether to throw an error on failure.
+    /// </summary>
+    /// <example>true</example>
+    [DefaultValue(true)]
+    public bool ThrowErrorOnFailure { get; set; } = true;
+
+    /// <summary>
+    /// Overrides the error message on failure.
+    /// </summary>
+    /// <example>Unable to send email</example>
+    [DisplayFormat(DataFormatString = "Text")]
+    [DefaultValue("")]
+    public string ErrorMessageOnFailure { get; set; } = string.Empty;
 }
