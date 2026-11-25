@@ -28,14 +28,15 @@ public static class SMTP
     /// [Documentation](https://tasks.frends.com/tasks/frends-tasks/Frends.SMTP.SendEmail)
     /// </summary>
     /// <param name="input">Message parameters.</param>
-    /// <param name="options">SMTP connection and error-handling parameters.</param>
+    /// <param name="connection">SMTP connection parameters.</param>
+    /// <param name="options">Error-handling parameters.</param>
     /// <param name="cancellationToken">Token given by Frends to terminate the Task.</param>
     /// <returns>object { bool Success, bool EmailSent, string StatusString, object Error { string Message, Exception AdditionalInfo } }</returns>
-    public static async Task<Result> SendEmail([PropertyTab] Input input, [PropertyTab] Options options, CancellationToken cancellationToken)
+    public static async Task<Result> SendEmail([PropertyTab] Input input, [PropertyTab] Connection connection, [PropertyTab] Options options, CancellationToken cancellationToken)
     {
         try
         {
-            return await SendEmailCore(input, options, cancellationToken);
+            return await SendEmailCore(input, connection, options, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -43,7 +44,7 @@ public static class SMTP
         }
     }
 
-    internal static async Task<Result> SendEmailCore(Input input, Options options, CancellationToken cancellationToken)
+    internal static async Task<Result> SendEmailCore(Input input, Connection connection, Options options, CancellationToken cancellationToken)
     {
         using var mail = InitializeMimeMessage(input);
 
@@ -100,7 +101,7 @@ public static class SMTP
             mail.Body = body;
         }
 
-        using var client = await InitializeSmtpClient(options, cancellationToken);
+        using var client = await InitializeSmtpClient(connection, cancellationToken);
 
         await client.SendAsync(mail, cancellationToken);
         await client.DisconnectAsync(true, cancellationToken);
@@ -111,19 +112,19 @@ public static class SMTP
     /// <summary>
     /// Initializes new SmtpClient with given parameters.
     /// </summary>
-    internal static async Task<SmtpClient> InitializeSmtpClient(Options options, CancellationToken cancellationToken, SmtpClient client = null)
+    internal static async Task<SmtpClient> InitializeSmtpClient(Connection connection, CancellationToken cancellationToken, SmtpClient client = null)
     {
         client ??= new SmtpClient();
 
         // Accept all certs?
-        if (options.AcceptAllCerts)
+        if (connection.AcceptAllCerts)
         {
             client.ServerCertificateValidationCallback = (s, x509certificate, x590chain, sslPolicyErrors) =>
             {
-                if (!string.IsNullOrEmpty(options.ServerCertificationThumbprint))
+                if (!string.IsNullOrEmpty(connection.ServerCertificationThumbprint))
                 {
                     if (x509certificate is X509Certificate2 cert && string.Equals(
-                        options.ServerCertificationThumbprint?.Replace(" ", string.Empty).ToUpperInvariant(),
+                        connection.ServerCertificationThumbprint?.Replace(" ", string.Empty).ToUpperInvariant(),
                         cert.Thumbprint?.Replace(" ", string.Empty).ToUpperInvariant(),
                         StringComparison.Ordinal))
                         return true;
@@ -140,10 +141,10 @@ public static class SMTP
         {
             client.ServerCertificateValidationCallback = (s, x509certificate, x590chain, sslPolicyErrors) =>
             {
-                if (!string.IsNullOrEmpty(options.ServerCertificationThumbprint))
+                if (!string.IsNullOrEmpty(connection.ServerCertificationThumbprint))
                 {
                     if (x509certificate is X509Certificate2 cert && string.Equals(
-                        options.ServerCertificationThumbprint?.Replace(" ", string.Empty).ToUpperInvariant(),
+                        connection.ServerCertificationThumbprint?.Replace(" ", string.Empty).ToUpperInvariant(),
                         cert.Thumbprint?.Replace(" ", string.Empty).ToUpperInvariant(),
                         StringComparison.Ordinal))
                         return true;
@@ -155,7 +156,7 @@ public static class SMTP
             };
         }
 
-        var secureSocketOption = options.SecureSocket switch
+        var secureSocketOption = connection.SecureSocket switch
         {
             SecureSocketOption.None => SecureSocketOptions.None,
             SecureSocketOption.SslOnConnect => SecureSocketOptions.SslOnConnect,
@@ -164,16 +165,16 @@ public static class SMTP
             _ => SecureSocketOptions.Auto,
         };
 
-        await client.ConnectAsync(options.SMTPServer, options.Port, secureSocketOption, cancellationToken);
+        await client.ConnectAsync(connection.SMTPServer, connection.Port, secureSocketOption, cancellationToken);
 
         SaslMechanism mechanism;
 
-        if (options.UseOAuth2)
-            mechanism = new SaslMechanismOAuth2(options.UserName, options.Token);
-        else if (string.IsNullOrEmpty(options.Password))
+        if (connection.UseOAuth2)
+            mechanism = new SaslMechanismOAuth2(connection.UserName, connection.Token);
+        else if (string.IsNullOrEmpty(connection.Password))
             return client;
         else
-            mechanism = new SaslMechanismLogin(new NetworkCredential(options.UserName, options.Password));
+            mechanism = new SaslMechanismLogin(new NetworkCredential(connection.UserName, connection.Password));
 
         await client.AuthenticateAsync(mechanism, cancellationToken);
 

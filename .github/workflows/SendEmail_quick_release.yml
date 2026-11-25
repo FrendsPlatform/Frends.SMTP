@@ -1,26 +1,26 @@
-name: SendEmail_build_main
+#USE THIS WORKFLOW ONLY WHEN YOU WANT TO RELEASE MANUALLY WITHOUT TESTS
+name: SendEmail quick release
+permissions:
+  contents: write
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'Frends.SMTP.SendEmail/**'
   workflow_dispatch:
 
 jobs:
-  build:
-    uses: FrendsPlatform/FrendsTasks/.github/workflows/build_main.yml@main
+  main_release:
+    uses: FrendsPlatform/FrendsTasks/.github/workflows/official_task_pipeline.yml@main
     with:
+      workflow_mode: release
+      os: all
+      workdir: Frends.SMTP.SendEmail
       env_var_name_1: Frends_SMTP_Username
       env_var_name_2: FRENDS_SMTP_PASSWORD
       env_var_name_3: Frends_SMTP_Address
       env_var_name_4: Frends_SMTP_Email
-      workdir: Frends.SMTP.SendEmail
     secrets:
+      badge_service_api_key: ${{ secrets.BADGE_SERVICE_API_KEY }}
+      target_feed_api_key: ${{ secrets.TASKS_FEED_API_KEY }}
       env_var_value_1: ${{ secrets.FRENDS_SMTP_USERNAME }}
       env_var_value_2: ${{ secrets.FRENDS_SMTP_PASSWORD }}
       env_var_value_3: ${{ secrets.FRENDS_SMTP_ADDRESS }}
       env_var_value_4: ${{ secrets.FRENDS_SMTP_EMAIL }}
-      badge_service_api_key: ${{ secrets.BADGE_SERVICE_API_KEY }}
-      

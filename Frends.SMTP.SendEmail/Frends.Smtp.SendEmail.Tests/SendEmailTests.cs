@@ -31,6 +31,7 @@ public class SendEmailTests
     private string filepath;
     private Input messageInput;
     private Input input2;
+    private Connection connection;
     private Options options;
 
     [SetUp]
@@ -74,7 +75,7 @@ public class SendEmailTests
             MessageEncoding = "utf-8",
         };
 
-        options = new Options()
+        connection = new Connection()
         {
             UserName = USERNAME,
             Password = PASSWORD,
@@ -84,6 +85,7 @@ public class SendEmailTests
             SecureSocket = SecureSocketOption.None,
             AcceptAllCerts = false,
         };
+        options = new Options();
     }
 
     [TearDown]
@@ -99,7 +101,7 @@ public class SendEmailTests
         var input = messageInput;
         input.Subject = "Email test - PlainText";
 
-        var result = await SMTP.SendEmail(input, options, default);
+        var result = await SMTP.SendEmail(input, connection, options, default);
         Assert.IsTrue(result.EmailSent);
     }
 
@@ -119,7 +121,7 @@ public class SendEmailTests
 
         input.Attachments = new[] { attachment };
 
-        var result = await SMTP.SendEmail(input, options, default);
+        var result = await SMTP.SendEmail(input, connection, options, default);
         Assert.IsTrue(result.EmailSent);
     }
 
@@ -136,7 +138,7 @@ public class SendEmailTests
         };
         input.Attachments = new[] { attachment };
 
-        var result = await SMTP.SendEmail(input, options, default);
+        var result = await SMTP.SendEmail(input, connection, options, default);
         Assert.IsTrue(result.EmailSent);
     }
 
@@ -155,7 +157,7 @@ public class SendEmailTests
 
         input.Attachments = new[] { attachment };
 
-        var result = await SMTP.SendEmail(input, options, default);
+        var result = await SMTP.SendEmail(input, connection, options, default);
         Assert.IsFalse(result.EmailSent);
     }
 
@@ -174,7 +176,7 @@ public class SendEmailTests
 
         input.Attachments = new[] { attachment };
 
-        var result = await SMTP.SendEmail(input, options, default);
+        var result = await SMTP.SendEmail(input, connection, options, default);
         Assert.IsFalse(result.EmailSent);
     }
 
@@ -193,7 +195,7 @@ public class SendEmailTests
 
         input.Attachments = new[] { attachment };
 
-        var ex = Assert.ThrowsAsync<FileNotFoundException>(async () => await SMTP.SendEmail(input, options, default));
+        var ex = Assert.ThrowsAsync<FileNotFoundException>(async () => await SMTP.SendEmail(input, connection, options, default));
         Assert.AreEqual(@$"The given filepath '{attachment.FilePath}' had no matching files", ex.Message);
     }
 
@@ -211,7 +213,7 @@ public class SendEmailTests
         options.ThrowErrorOnFailure = false;
         options.ErrorMessageOnFailure = "Unable to send email";
 
-        var result = await SMTP.SendEmail(messageInput, options, default);
+        var result = await SMTP.SendEmail(messageInput, connection, options, default);
 
         Assert.IsFalse(result.Success);
         Assert.IsFalse(result.EmailSent);
@@ -233,7 +235,7 @@ public class SendEmailTests
         options.ErrorMessageOnFailure = "Unable to send email";
 
         var exception = Assert.ThrowsAsync<Exception>(async () =>
-            await SMTP.SendEmail(messageInput, options, default));
+            await SMTP.SendEmail(messageInput, connection, options, default));
 
         Assert.AreEqual("Unable to send email", exception.Message);
         Assert.IsInstanceOf<FileNotFoundException>(exception.InnerException);
@@ -248,13 +250,13 @@ public class SendEmailTests
         messageInput.Attachments = new[] { new Attachment { AttachmentType = AttachmentType.FileAttachment } };
 
         Assert.ThrowsAsync<OperationCanceledException>(async () =>
-            await SMTP.SendEmail(messageInput, options, cancellation.Token));
+            await SMTP.SendEmail(messageInput, connection, options, cancellation.Token));
     }
 
     [Test]
     public async Task TestAcceptAllCerts()
     {
-        var options = new Options
+        var connection = new Connection
         {
             AcceptAllCerts = true,
             SMTPServer = "smtp.example.com",
@@ -275,13 +277,13 @@ public class SendEmailTests
             It.IsAny<SaslMechanism>(),
             It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
-        await SMTP.InitializeSmtpClient(options, default, mockSmtpClient.Object);
+        await SMTP.InitializeSmtpClient(connection, default, mockSmtpClient.Object);
 
         // Verify connection parameters
         mockSmtpClient.Verify(
             client => client.ConnectAsync(
-            options.SMTPServer,
-            options.Port,
+            connection.SMTPServer,
+            connection.Port,
             SecureSocketOptions.StartTls,
             default),
             Times.Once);
@@ -301,8 +303,8 @@ public class SendEmailTests
         });
 
         // Test with AcceptAllCerts = false
-        options.AcceptAllCerts = false;
-        await SMTP.InitializeSmtpClient(options, default, mockSmtpClient.Object);
+        connection.AcceptAllCerts = false;
+        await SMTP.InitializeSmtpClient(connection, default, mockSmtpClient.Object);
         callback = mockSmtpClient.Object.ServerCertificateValidationCallback;
 
         Assert.Multiple(() =>
@@ -335,7 +337,7 @@ public class SendEmailTests
             It.IsAny<SaslMechanism>(),
             It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
 
-        var options = new Options
+        var connection = new Connection
         {
             SMTPServer = "smtp.example.com",
             Port = 587,
@@ -343,38 +345,38 @@ public class SendEmailTests
             UseOAuth2 = false,
         };
 
-        options.AcceptAllCerts = true;
-        options.ServerCertificationThumbprint = validThumbprint;
+        connection.AcceptAllCerts = true;
+        connection.ServerCertificationThumbprint = validThumbprint;
 
-        await SMTP.InitializeSmtpClient(options, default, mockSmtpClient.Object);
+        await SMTP.InitializeSmtpClient(connection, default, mockSmtpClient.Object);
         var callback = mockSmtpClient.Object.ServerCertificateValidationCallback;
 
         Assert.IsTrue(
             callback.Invoke(null, validCert, null, SslPolicyErrors.RemoteCertificateChainErrors),
             "AcceptAllCerts=true: Valid thumbprint should be accepted.");
 
-        options.ServerCertificationThumbprint = invalidThumbprint;
+        connection.ServerCertificationThumbprint = invalidThumbprint;
 
-        await SMTP.InitializeSmtpClient(options, default, mockSmtpClient.Object);
+        await SMTP.InitializeSmtpClient(connection, default, mockSmtpClient.Object);
         callback = mockSmtpClient.Object.ServerCertificateValidationCallback;
 
         Assert.IsFalse(
             callback.Invoke(null, validCert, null, SslPolicyErrors.RemoteCertificateChainErrors),
             "AcceptAllCerts=true: Invalid thumbprint should be rejected.");
 
-        options.AcceptAllCerts = false;
-        options.ServerCertificationThumbprint = validThumbprint;
+        connection.AcceptAllCerts = false;
+        connection.ServerCertificationThumbprint = validThumbprint;
 
-        await SMTP.InitializeSmtpClient(options, default, mockSmtpClient.Object);
+        await SMTP.InitializeSmtpClient(connection, default, mockSmtpClient.Object);
         callback = mockSmtpClient.Object.ServerCertificateValidationCallback;
 
         Assert.IsTrue(
             callback.Invoke(null, validCert, null, SslPolicyErrors.RemoteCertificateChainErrors),
             "AcceptAllCerts=false: Valid thumbprint should be accepted even with SSL errors.");
 
-        options.ServerCertificationThumbprint = invalidThumbprint;
+        connection.ServerCertificationThumbprint = invalidThumbprint;
 
-        await SMTP.InitializeSmtpClient(options, default, mockSmtpClient.Object);
+        await SMTP.InitializeSmtpClient(connection, default, mockSmtpClient.Object);
         callback = mockSmtpClient.Object.ServerCertificateValidationCallback;
 
         Assert.IsFalse(
