@@ -20,12 +20,6 @@ public class Result
     public bool Success { get; set; }
 
     /// <summary>
-    /// Error that occurred while sending the email.
-    /// </summary>
-    /// <example>object { string Message, Exception AdditionalInfo }</example>
-    public Error Error { get; set; }
-
-    /// <summary>
     /// Value is true if email was sent.
     /// </summary>
     /// <example>true</example>
@@ -36,4 +30,10 @@ public class Result
     /// </summary>
     /// <example>Email sent to: john.doe@somedomain.com</example>
     public string StatusString { get; private set; }
+
+    /// <summary>
+    /// Error that occurred while sending the email.
+    /// </summary>
+    /// <example>object { string Message, Exception AdditionalInfo }</example>
+    public Error Error { get; set; }
 }
