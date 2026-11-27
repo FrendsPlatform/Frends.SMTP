@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
 namespace Frends.SMTP.SendEmail.Definitions;
@@ -44,4 +44,3 @@ public class Attachment
     [UIHint(nameof(AttachmentType), "", AttachmentType.FileAttachment)]
     public bool SendIfNoAttachmentsFound { get; set; }
 }
-

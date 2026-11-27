@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.0.0] - 2026-11-25
+### Changed
+- **[Breaking Change]** Attachments are now configured in the message `Input` instead of a separate task parameter.
+- **[Breaking Change]** Moved SMTP server and authentication parameters from `Options` to the new `Connection` tab.
+- Added a Success indicator and error details to the result, with options to return failures or customize thrown error messages.
+- Updated the Task to .NET 8.
+- Updated the email library to address a known security vulnerability.
+
 ## [2.1.0] - 2025-12-08
 ### Fixed
 - Fix missing metadata about repository url and changelog.

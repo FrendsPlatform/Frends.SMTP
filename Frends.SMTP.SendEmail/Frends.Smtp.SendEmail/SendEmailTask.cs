@@ -1,21 +1,23 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Net;
-using MailKit.Net.Smtp;
-using MailKit.Security;
+using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
-using MimeKit;
-using MimeKit.Text;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Frends.SMTP.SendEmail.Definitions;
-using System.Net.Security;
+using Frends.SMTP.SendEmail.Helpers;
+using MailKit.Net.Smtp;
+using MailKit.Security;
+using MimeKit;
+using MimeKit.Text;
 
 namespace Frends.SMTP.SendEmail;
+
 /// <summary>
 /// Main class of the Task.
 /// </summary>
@@ -26,15 +28,27 @@ public static class SMTP
     /// [Documentation](https://tasks.frends.com/tasks/frends-tasks/Frends.SMTP.SendEmail)
     /// </summary>
     /// <param name="input">Message parameters.</param>
-    /// <param name="attachments">Parameters for adding attachments.</param>
-    /// <param name="SMTPSettings">Connection parameters.</param>
+    /// <param name="connection">SMTP connection parameters.</param>
+    /// <param name="options">Error-handling parameters.</param>
     /// <param name="cancellationToken">Token given by Frends to terminate the Task.</param>
-    /// <returns>Object { bool EmailSent, string StatusString }</returns>
-    public static async Task<Result> SendEmail([PropertyTab] Input input, [PropertyTab] AttachmentOptions attachments, [PropertyTab] Options SMTPSettings, CancellationToken cancellationToken)
+    /// <returns>object { bool Success, bool EmailSent, string StatusString, object Error { string Message, Exception AdditionalInfo } }</returns>
+    public static async Task<Result> SendEmail([PropertyTab] Input input, [PropertyTab] Connection connection, [PropertyTab] Options options, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await SendEmailCore(input, connection, options, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            return ex.Handle(options);
+        }
+    }
+
+    internal static async Task<Result> SendEmailCore(Input input, Connection connection, Options options, CancellationToken cancellationToken)
     {
         using var mail = InitializeMimeMessage(input);
 
-        if (attachments != null && attachments.Attachments.Length > 0)
+        if (input.Attachments != null && input.Attachments.Length > 0)
         {
             var builder = new BodyBuilder();
 
@@ -43,7 +57,7 @@ public static class SMTP
             else
                 builder.TextBody = input.Message;
 
-            foreach (var attachment in attachments.Attachments)
+            foreach (var attachment in input.Attachments)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -77,17 +91,17 @@ public static class SMTP
         }
         else
         {
-            //Set message encoding
+            // Set message encoding
             Encoding encoding = Encoding.GetEncoding(input.MessageEncoding);
 
-            var body = (input.IsMessageHtml)
+            var body = input.IsMessageHtml
                 ? new TextPart(TextFormat.Html) { Text = input.Message }
                 : new TextPart(TextFormat.Plain) { Text = input.Message };
             body.SetText(encoding, input.Message);
             mail.Body = body;
         }
 
-        using var client = await InitializeSmtpClient(SMTPSettings, cancellationToken);
+        using var client = await InitializeSmtpClient(connection, cancellationToken);
 
         await client.SendAsync(mail, cancellationToken);
         await client.DisconnectAsync(true, cancellationToken);
@@ -98,21 +112,20 @@ public static class SMTP
     /// <summary>
     /// Initializes new SmtpClient with given parameters.
     /// </summary>
-    internal static async Task<SmtpClient> InitializeSmtpClient(Options options, CancellationToken cancellationToken, SmtpClient client = null)
+    internal static async Task<SmtpClient> InitializeSmtpClient(Connection connection, CancellationToken cancellationToken, SmtpClient client = null)
     {
         client ??= new SmtpClient();
 
         // Accept all certs?
-        if (options.AcceptAllCerts)
+        if (connection.AcceptAllCerts)
         {
-#pragma warning disable S4830 // Server certificates should be verified during SSL/TLS connections
             client.ServerCertificateValidationCallback = (s, x509certificate, x590chain, sslPolicyErrors) =>
             {
-                if (!string.IsNullOrEmpty(options.ServerCertificationThumbprint))
+                if (!string.IsNullOrEmpty(connection.ServerCertificationThumbprint))
                 {
                     if (x509certificate is X509Certificate2 cert && string.Equals(
-                        options.ServerCertificationThumbprint?.Replace(" ", "").ToUpperInvariant(),
-                        cert.Thumbprint?.Replace(" ", "").ToUpperInvariant(),
+                        connection.ServerCertificationThumbprint?.Replace(" ", string.Empty).ToUpperInvariant(),
+                        cert.Thumbprint?.Replace(" ", string.Empty).ToUpperInvariant(),
                         StringComparison.Ordinal))
                         return true;
                     else
@@ -122,19 +135,17 @@ public static class SMTP
                 {
                     return true;
                 }
-
             };
-#pragma warning restore S4830 // Server certificates should be verified during SSL/TLS connections
         }
         else
         {
             client.ServerCertificateValidationCallback = (s, x509certificate, x590chain, sslPolicyErrors) =>
             {
-                if (!string.IsNullOrEmpty(options.ServerCertificationThumbprint))
+                if (!string.IsNullOrEmpty(connection.ServerCertificationThumbprint))
                 {
                     if (x509certificate is X509Certificate2 cert && string.Equals(
-                        options.ServerCertificationThumbprint?.Replace(" ", "").ToUpperInvariant(),
-                        cert.Thumbprint?.Replace(" ", "").ToUpperInvariant(),
+                        connection.ServerCertificationThumbprint?.Replace(" ", string.Empty).ToUpperInvariant(),
+                        cert.Thumbprint?.Replace(" ", string.Empty).ToUpperInvariant(),
                         StringComparison.Ordinal))
                         return true;
                     else
@@ -145,7 +156,7 @@ public static class SMTP
             };
         }
 
-        var secureSocketOption = options.SecureSocket switch
+        var secureSocketOption = connection.SecureSocket switch
         {
             SecureSocketOption.None => SecureSocketOptions.None,
             SecureSocketOption.SslOnConnect => SecureSocketOptions.SslOnConnect,
@@ -154,16 +165,16 @@ public static class SMTP
             _ => SecureSocketOptions.Auto,
         };
 
-        await client.ConnectAsync(options.SMTPServer, options.Port, secureSocketOption, cancellationToken);
+        await client.ConnectAsync(connection.SMTPServer, connection.Port, secureSocketOption, cancellationToken);
 
         SaslMechanism mechanism;
 
-        if (options.UseOAuth2)
-            mechanism = new SaslMechanismOAuth2(options.UserName, options.Token);
-        else if (string.IsNullOrEmpty(options.Password))
+        if (connection.UseOAuth2)
+            mechanism = new SaslMechanismOAuth2(connection.UserName, connection.Token);
+        else if (string.IsNullOrEmpty(connection.Password))
             return client;
         else
-            mechanism = new SaslMechanismLogin(new NetworkCredential(options.UserName, options.Password));
+            mechanism = new SaslMechanismLogin(new NetworkCredential(connection.UserName, connection.Password));
 
         await client.AuthenticateAsync(mechanism, cancellationToken);
 
@@ -175,7 +186,7 @@ public static class SMTP
     /// </summary>
     private static MimeMessage InitializeMimeMessage(Input input)
     {
-        //split recipients, either by comma or semicolon
+        // split recipients, either by comma or semicolon
         var separators = new[] { ',', ';' };
 
         MailboxAddress[] recipients = string.IsNullOrEmpty(input.To)
@@ -188,7 +199,7 @@ public static class SMTP
             ? Array.Empty<MailboxAddress>()
             : input.Bcc.Split(separators, StringSplitOptions.RemoveEmptyEntries).Select(x => MailboxAddress.Parse(x)).ToArray();
 
-        //Create mail object
+        // Create mail object
         var mail = new MimeMessage();
         mail.From.Add(new MailboxAddress(input.SenderName, input.From));
         mail.Sender = new MailboxAddress(input.SenderName, input.From);
@@ -206,7 +217,7 @@ public static class SMTP
     private static ICollection<string> GetAttachmentFiles(string filePath)
     {
         string folder = Path.GetDirectoryName(filePath);
-        string fileMask = Path.GetFileName(filePath) != "" ? Path.GetFileName(filePath) : "*";
+        string fileMask = Path.GetFileName(filePath) != string.Empty ? Path.GetFileName(filePath) : "*";
 
         string[] filePaths = Directory.GetFiles(folder, fileMask);
 
@@ -216,11 +227,11 @@ public static class SMTP
     /// <summary>
     /// Create temp file of attachment from string.
     /// </summary>
-    /// <param name="attachment"></param>
+    /// <param name="attachment">Attachment content to write to a temporary file.</param>
     private static string CreateTemporaryFile(Attachment attachment)
     {
-        var TempWorkDirBase = InitializeTemporaryWorkPath();
-        var filePath = Path.Combine(TempWorkDirBase, attachment.StringAttachment.FileName);
+        var tempWorkDirBase = InitializeTemporaryWorkPath();
+        var filePath = Path.Combine(tempWorkDirBase, attachment.StringAttachment.FileName);
         var content = attachment.StringAttachment.FileContent;
 
         using var sw = File.CreateText(filePath);
@@ -232,7 +243,7 @@ public static class SMTP
     /// <summary>
     /// Remove the temporary workdir.
     /// </summary>
-    /// <param name="tempWorkDir"></param>
+    /// <param name="tempWorkDir">Temporary directory to remove.</param>
     private static void CleanUpTempWorkDir(string tempWorkDir)
     {
         if (!string.IsNullOrEmpty(tempWorkDir) && Directory.Exists(tempWorkDir)) Directory.Delete(tempWorkDir, true);

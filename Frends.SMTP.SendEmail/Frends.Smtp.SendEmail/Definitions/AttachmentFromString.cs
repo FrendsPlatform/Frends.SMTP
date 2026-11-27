@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 
 namespace Frends.SMTP.SendEmail.Definitions;
 
@@ -10,13 +10,14 @@ public class AttachmentFromString
     /// <summary>
     /// Content of the attachment file
     /// </summary>
+    /// <example>Invoice details for November</example>
     [DefaultValue("")]
     public string FileContent { get; set; }
 
     /// <summary>
     /// Name of the attachment file
     /// </summary>
+    /// <example>invoice.txt</example>
     [DefaultValue("")]
     public string FileName { get; set; }
 }
-

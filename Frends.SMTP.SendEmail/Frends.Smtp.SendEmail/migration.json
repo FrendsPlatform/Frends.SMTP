@@ -1,0 +1,63 @@
+[
+  {
+    "Task": "Frends.SMTP.SendEmail",
+    "Migrations": [
+      {
+        "Version": "3.0.0",
+        "Description": "Moved SMTP connection parameters from Options to Connection. Copy the existing SMTP connection values to the Connection tab.",
+        "Migration": [
+          {
+            "Type": "Copy",
+            "Source": "Options.SMTPServer",
+            "Target": "Connection.SMTPServer"
+          },
+          {
+            "Type": "Copy",
+            "Source": "Options.Port",
+            "Target": "Connection.Port"
+          },
+          {
+            "Type": "Copy",
+            "Source": "Options.SecureSocket",
+            "Target": "Connection.SecureSocket"
+          },
+          {
+            "Type": "Copy",
+            "Source": "Options.AcceptAllCerts",
+            "Target": "Connection.AcceptAllCerts"
+          },
+          {
+            "Type": "Copy",
+            "Source": "Options.UseOAuth2",
+            "Target": "Connection.UseOAuth2"
+          },
+          {
+            "Type": "Copy",
+            "Source": "Options.Token",
+            "Target": "Connection.Token"
+          },
+          {
+            "Type": "Copy",
+            "Source": "Options.UserName",
+            "Target": "Connection.UserName"
+          },
+          {
+            "Type": "Copy",
+            "Source": "Options.Password",
+            "Target": "Connection.Password"
+          },
+          {
+            "Type": "Copy",
+            "Source": "Options.ServerCertificationThumbprint",
+            "Target": "Connection.ServerCertificationThumbprint"
+          },
+          {
+            "Type": "Copy",
+            "Source": "AttachmentOptions.Attachments",
+            "Target": "Input.Attachments"
+          }
+        ]
+      }
+    ]
+  }
+]
